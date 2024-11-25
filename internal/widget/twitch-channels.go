@@ -9,15 +9,15 @@ import (
 	"github.com/glanceapp/glance/internal/feed"
 )
 
-type TwitchChannels struct {
+type Lives struct {
 	widgetBase      `yaml:",inline"`
-	ChannelsRequest []string             `yaml:"channels"`
-	Channels        []feed.TwitchChannel `yaml:"-"`
-	CollapseAfter   int                  `yaml:"collapse-after"`
-	SortBy          string               `yaml:"sort-by"`
+	ChannelsRequest []feed.ChannelRequest `yaml:"channels"`
+	Channels        []feed.Channel        `yaml:"-"`
+	CollapseAfter   int                   `yaml:"collapse-after"`
+	SortBy          string                `yaml:"sort-by"`
 }
 
-func (widget *TwitchChannels) Initialize() error {
+func (widget *Lives) Initialize() error {
 	widget.
 		withTitle("Twitch Channels").
 		withTitleURL("https://www.twitch.tv/directory/following").
@@ -34,8 +34,8 @@ func (widget *TwitchChannels) Initialize() error {
 	return nil
 }
 
-func (widget *TwitchChannels) Update(ctx context.Context) {
-	channels, err := feed.FetchChannelsFromTwitch(widget.ChannelsRequest)
+func (widget *Lives) Update(ctx context.Context) {
+	channels, err := feed.FetchChannels(widget.ChannelsRequest)
 
 	if !widget.canContinueUpdateAfterHandlingErr(err) {
 		return
@@ -50,6 +50,6 @@ func (widget *TwitchChannels) Update(ctx context.Context) {
 	widget.Channels = channels
 }
 
-func (widget *TwitchChannels) Render() template.HTML {
+func (widget *Lives) Render() template.HTML {
 	return widget.render(widget, assets.TwitchChannelsTemplate)
 }

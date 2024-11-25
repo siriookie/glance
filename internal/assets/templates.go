@@ -43,6 +43,7 @@ var (
 
 var globalTemplateFunctions = template.FuncMap{
 	"relativeTime":      relativeTimeSince,
+	"relativeTimeXG":    relativeTimeXG,
 	"formatViewerCount": formatViewerCount,
 	"formatNumber":      intl.Sprint,
 	"absInt": func(i int) int {
@@ -106,4 +107,14 @@ func relativeTimeSince(t time.Time) string {
 	}
 
 	return fmt.Sprintf("%dy", delta/(365*24*time.Hour))
+}
+
+func relativeTimeXG() int {
+	targetDate := time.Date(2024, 12, 7, 0, 0, 0, 0, time.Local)
+	now := time.Now()
+	days := int(targetDate.Sub(now).Hours() / 24)
+	if days < 0 {
+		return 0
+	}
+	return days
 }

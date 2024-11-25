@@ -24,7 +24,8 @@ type TwitchCategory struct {
 	IsNew           bool   `json:"-"`
 }
 
-type TwitchChannel struct {
+type Channel struct {
+	Platform     string
 	Login        string
 	Exists       bool
 	Name         string
@@ -36,15 +37,20 @@ type TwitchChannel struct {
 	ViewersCount int
 }
 
-type TwitchChannels []TwitchChannel
+type ChannelRequest struct {
+	Platform string   `yaml:"platform"`
+	Rooms    []string `yaml:"rooms"`
+}
 
-func (channels TwitchChannels) SortByViewers() {
+type Channels []Channel
+
+func (channels Channels) SortByViewers() {
 	sort.Slice(channels, func(i, j int) bool {
 		return channels[i].ViewersCount > channels[j].ViewersCount
 	})
 }
 
-func (channels TwitchChannels) SortByLive() {
+func (channels Channels) SortByLive() {
 	sort.SliceStable(channels, func(i, j int) bool {
 		return channels[i].IsLive && !channels[j].IsLive
 	})
@@ -150,9 +156,10 @@ const twitchChannelStatusOperationRequestBody = `[{"operationName":"ChannelShell
 // what the limit is for max operations per request and batch operations in
 // multiple requests if number of channels exceeds allowed limit.
 
-func fetchChannelFromTwitchTask(channel string) (TwitchChannel, error) {
-	result := TwitchChannel{
-		Login: strings.ToLower(channel),
+func fetchChannelFromTwitchTask(channel string) (Channel, error) {
+	result := Channel{
+		Platform: "twitch.tv",
+		Login:    strings.ToLower(channel),
 	}
 
 	reader := strings.NewReader(fmt.Sprintf(twitchChannelStatusOperationRequestBody, channel, channel))
@@ -222,10 +229,32 @@ func fetchChannelFromTwitchTask(channel string) (TwitchChannel, error) {
 	return result, nil
 }
 
-func FetchChannelsFromTwitch(channelLogins []string) (TwitchChannels, error) {
-	result := make(TwitchChannels, 0, len(channelLogins))
+func FetchChannels(channelLogins []ChannelRequest) (Channels, error) {
+	var channels Channels
+	for _, roomInfo := range channelLogins {
+		switch roomInfo.Platform {
+		case "twitch":
+			twitchChannel, err := FetchTwitchChannels(roomInfo.Rooms)
+			if err != nil {
+				return nil, err
+			}
+			channels = append(channels, twitchChannel...)
+		case "douyu":
+			douyuChannel, err := FetchDouyuChannels(roomInfo.Rooms)
+			if err != nil {
+				return nil, err
+			}
+			channels = append(channels, douyuChannel...)
 
-	job := newJob(fetchChannelFromTwitchTask, channelLogins).withWorkers(10)
+		}
+	}
+	return channels, nil
+}
+
+func FetchTwitchChannels(rooms []string) (Channels, error) {
+	result := make(Channels, 0, len(rooms))
+
+	job := newJob(fetchChannelFromTwitchTask, rooms).withWorkers(10)
 	channels, errs, err := workerPoolDo(job)
 
 	if err != nil {
@@ -237,14 +266,14 @@ func FetchChannelsFromTwitch(channelLogins []string) (TwitchChannels, error) {
 	for i := range channels {
 		if errs[i] != nil {
 			failed++
-			slog.Warn("failed to fetch twitch channel", "channel", channelLogins[i], "error", errs[i])
+			slog.Warn("failed to fetch twitch channel", "channel", rooms[i], "error", errs[i])
 			continue
 		}
 
 		result = append(result, channels[i])
 	}
 
-	if failed == len(channelLogins) {
+	if failed == len(rooms) {
 		return result, ErrNoContent
 	}
 

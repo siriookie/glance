@@ -51,8 +51,8 @@ func New(widgetType string) (Widget, error) {
 		widget = &Monitor{}
 	case "twitch-top-games":
 		widget = &TwitchGames{}
-	case "twitch-channels":
-		widget = &TwitchChannels{}
+	case "lives":
+		widget = &Lives{}
 	case "lobsters":
 		widget = &Lobsters{}
 	case "change-detection":
