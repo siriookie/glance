@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const huyaQueryRoomInfoEndpoint = "https://www.douyu.com/betard/"
+const huyaQueryRoomInfoEndpoint = "https://www.m.huya.com/"
 
 var (
 	OwnerNamePattern = regexp.MustCompile(`"sNick":"([\s\S]*?)",`)

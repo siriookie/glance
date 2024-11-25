@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const douyuQueryRoomInfoEndpoint = "https://m.huya.com/"
+const douyuQueryRoomInfoEndpoint = "https://www.douyu.com/betard/"
 
 func FetchDouyuChannels(rooms []string) (Channels, error) {
 	result := make(Channels, 0, len(rooms))
