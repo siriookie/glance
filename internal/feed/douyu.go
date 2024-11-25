@@ -25,7 +25,7 @@ func FetchDouyuChannels(rooms []string) (Channels, error) {
 	for i := range channels {
 		if errs[i] != nil {
 			failed++
-			slog.Warn("failed to fetch twitch channel", "channel", rooms[i], "error", errs[i])
+			slog.Warn("failed to fetch douyu channel", "channel", rooms[i], "error", errs[i])
 			continue
 		}
 

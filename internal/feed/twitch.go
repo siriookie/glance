@@ -245,7 +245,12 @@ func FetchChannels(channelLogins []ChannelRequest) (Channels, error) {
 				return nil, err
 			}
 			channels = append(channels, douyuChannel...)
-
+		case "huya":
+			huyaChannel, err := FetchHuyaChannels(roomInfo.Rooms)
+			if err != nil {
+				return nil, err
+			}
+			channels = append(channels, huyaChannel...)
 		}
 	}
 	return channels, nil

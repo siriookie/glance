@@ -45,6 +45,34 @@ func truncateString(s string, maxLen int) string {
 	return s
 }
 
+func doRequest(client RequestDoer, request *http.Request) (string, error) {
+	response, err := client.Do(request)
+	var result string
+
+	if err != nil {
+		return result, err
+	}
+
+	defer response.Body.Close()
+
+	body, err := io.ReadAll(response.Body)
+
+	if err != nil {
+		return result, err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return result, fmt.Errorf(
+			"unexpected status code %d for %s, response: %s",
+			response.StatusCode,
+			request.URL,
+			truncateString(string(body), 256),
+		)
+	}
+
+	return string(body), nil
+}
+
 func decodeJsonFromRequest[T any](client RequestDoer, request *http.Request) (T, error) {
 	response, err := client.Do(request)
 	var result T
