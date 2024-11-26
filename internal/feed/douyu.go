@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const douyuQueryRoomInfoEndpoint = "https://www.douyu.com/betard/"
+const douyuQueryRoomInfoEndpoint = "https://open.douyucdn.cn/api/RoomApi/room"
 
 func FetchDouyuChannels(rooms []string) (Channels, error) {
 	result := make(Channels, 0, len(rooms))
@@ -66,15 +66,16 @@ func fetchChannelFromDouyuTask(channel string) (Channel, error) {
 
 	result.Name = response.Room.RoomName
 	result.Exists = true
-	result.AvatarUrl = response.Room.Avatar.Small
+	result.AvatarUrl = response.Room.Avatar
 
-	if response.Room.ShowStatus != 0 {
+	if response.Room.RoomStatus != "2" {
 		result.IsLive = true
-		result.Category = response.Room.SecondLvlName
-		timestamp := response.Room.ShowTime
+		result.Category = response.Room.CateName
+		rfc3339Time := parseRFC3339Time(response.Room.StartTime)
+		timestamp := rfc3339Time.Unix()
 		t := time.Unix(timestamp, 0)
-
 		result.LiveSince = t
+		result.ViewersCount = response.Room.Online
 	}
 
 	return result, nil
@@ -82,27 +83,15 @@ func fetchChannelFromDouyuTask(channel string) (Channel, error) {
 
 type DouyuRoomInfoResponse struct {
 	Room struct {
-		Avatar        Avatar `json:"avatar"`
-		ShowStatus    int    `json:"show_status"`
-		RoomID        int    `json:"room_id"`
-		Status        string `json:"status"`
-		Nickname      string `json:"nickname"`
-		ChatLevel     bool   `json:"chat_level"`
-		RoomName      string `json:"room_name"`
-		Share         Share  `json:"share"`
-		SecondLvlName string `json:"second_lvl_name"`
-		ShowTime      int64  `json:"show_time"`
-	} `json:"room"`
-}
-
-type Avatar struct {
-	Big    string `json:"big"`
-	Middle string `json:"middle"`
-	Small  string `json:"small"`
-}
-
-type Share struct {
-	Video  string `json:"video"`
-	Flash  string `json:"flash"`
-	Common string `json:"common"`
+		Avatar     string `json:"avatar"`
+		Online     int    `json:"online"`
+		RoomStatus string `json:"room_status"`
+		RoomID     string `json:"room_id"`
+		Status     string `json:"status"`
+		Nickname   string `json:"nickname"`
+		ChatLevel  bool   `json:"chat_level"`
+		RoomName   string `json:"room_name"`
+		CateName   string `json:"cate_name"`
+		StartTime  string `json:"start_time"`
+	} `json:"data"`
 }

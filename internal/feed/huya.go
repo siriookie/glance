@@ -9,16 +9,18 @@ import (
 	"time"
 )
 
-const huyaQueryRoomInfoEndpoint = "https://www.m.huya.com/"
+const huyaQueryRoomInfoEndpoint = "https://m.huya.com"
 
 var (
 	OwnerNamePattern = regexp.MustCompile(`"sNick":"([\s\S]*?)",`)
-	RoomNamePattern  = regexp.MustCompile(`"sIntroduction":"([\s\S]*?)",`)
+	RoomNamePattern  = regexp.MustCompile(`"sIntroduction":"([^"]*)",`)
 	RoomPicPattern   = regexp.MustCompile(`"sScreenshot":"([\s\S]*?)",`)
 	OwnerPicPattern  = regexp.MustCompile(`"sAvatar180":"([\s\S]*?)",`)
-	AREAPattern      = regexp.MustCompile(`"sGameFullName":"([\s\S]*?)",`)
-	NumPattern       = regexp.MustCompile(`"lActivityCount":([\s\S]*?),`)
-	ISLIVEPattern    = regexp.MustCompile(`"eLiveStatus":([\s\S]*?),`)
+	AREAPattern      = regexp.MustCompile(`"sGameFullName":"([^"]*)",`)
+	NumPattern       = regexp.MustCompile(`"lActivityCount":"([^"]*)",`)
+	StartTimePattern = regexp.MustCompile(`"iStartTime":(\d+)`)
+
+	ISLIVEPattern = regexp.MustCompile(`"eLiveStatus":([\s\S]*?),`)
 )
 
 func FetchHuyaChannels(rooms []string) (Channels, error) {
@@ -59,46 +61,48 @@ func fetchChannelFromHuyaTask(channel string) (Channel, error) {
 		Platform: "m.huya.com",
 		Login:    strings.ToLower(channel),
 	}
-
 	request, _ := http.NewRequest("GET", fmt.Sprintf("%s/%s", huyaQueryRoomInfoEndpoint, channel), nil)
 	// 设置请求头
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("User-Agent", "Mozilla/5.0 (Linux; Android 5.0; SM-G900P Build/LRX21T) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Mobile Safari/537.36")
-
 	response, err := doRequest(defaultClient, request)
-
 	if err != nil {
 		return result, err
 	}
-
-	// 匹配正则并提取信息
-	nameMatch := RoomNamePattern.FindStringSubmatch(response)
-	if len(nameMatch) > 1 {
-		result.Name = nameMatch[1]
-		result.Exists = true
+	nameMatches := RoomNamePattern.FindAllStringSubmatch(response, -1)
+	result.Exists = true
+	for _, match := range nameMatches {
+		if match[1] != "" {
+			result.Name = match[1]
+			break
+		}
 	}
-
 	avatarMatch := OwnerPicPattern.FindStringSubmatch(response)
 	if len(avatarMatch) > 1 {
-		result.AvatarUrl = avatarMatch[1]
+		decodedURL := strings.ReplaceAll(avatarMatch[1], `\u002F`, `/`)
+		result.AvatarUrl = decodedURL
 	}
 	isLiveMatch := ISLIVEPattern.FindStringSubmatch(response)
-	if len(isLiveMatch) > 1 && strings.TrimSpace(isLiveMatch[1]) == "1" {
+	if len(isLiveMatch) > 1 && strings.TrimSpace(isLiveMatch[1]) == "2" {
 		result.IsLive = true
-
-		// 分类
-		categoryMatch := AREAPattern.FindStringSubmatch(response)
-		if len(categoryMatch) > 1 {
-			result.Category = categoryMatch[1]
+		categoryMatches := AREAPattern.FindAllStringSubmatch(response, -1)
+		for _, categoryMatch := range categoryMatches {
+			if categoryMatch[1] != "" {
+				result.Category = categoryMatch[1]
+				break
+			}
 		}
 
 		// 直播开始时间
-		showTimeMatch := NumPattern.FindStringSubmatch(response)
-		if len(showTimeMatch) > 1 {
-			timestamp := 0
-			fmt.Sscanf(showTimeMatch[1], "%d", &timestamp)
-			t := time.Unix(int64(timestamp), 0)
-			result.LiveSince = t
+		showTimeMatches := StartTimePattern.FindAllStringSubmatch(response, -1)
+		for _, showTimeMatch := range showTimeMatches {
+			if showTimeMatch[1] != "0" {
+				timestamp := 0
+				fmt.Sscanf(showTimeMatch[1], "%d", &timestamp)
+				t := time.Unix(int64(timestamp), 0)
+				result.LiveSince = t
+				break
+			}
 		}
 	}
 
